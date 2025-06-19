@@ -3,6 +3,7 @@ User repository for database operations
 """
 
 from typing import List, Optional
+from datetime import datetime
 
 from bson import ObjectId
 from motor.motor_asyncio import AsyncIOMotorDatabase
@@ -74,6 +75,9 @@ class UserRepository:
         if not update_data:
             return await self.get_user_by_id(user_id)
             
+        # Add updated_at timestamp
+        update_data["updated_at"] = datetime.utcnow()
+            
         try:
             await self.collection.update_one(
                 {"_id": ObjectId(user_id)},
@@ -102,6 +106,20 @@ class UserRepository:
     async def count_users(self) -> int:
         """Count total users"""
         return await self.collection.count_documents({})
+
+    async def change_password(self, user_id: str, new_hashed_password: str) -> bool:
+        """Change user password"""
+        if not ObjectId.is_valid(user_id):
+            return False
+            
+        result = await self.collection.update_one(
+            {"_id": ObjectId(user_id)},
+            {"$set": {
+                "hashed_password": new_hashed_password,
+                "updated_at": datetime.utcnow()
+            }}
+        )
+        return result.modified_count > 0
 
     def to_public_user(self, user_in_db: UserInDB) -> User:
         """Convert UserInDB to public User schema"""

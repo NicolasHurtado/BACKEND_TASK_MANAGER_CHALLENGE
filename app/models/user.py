@@ -53,6 +53,12 @@ class UserUpdate(BaseModel):
     is_active: Optional[bool] = Field(None, description="Usuario activo")
 
 
+class PasswordChange(BaseModel):
+    """Schema for changing password"""
+    current_password: str = Field(..., min_length=6, description="Contraseña actual")
+    new_password: str = Field(..., min_length=6, description="Nueva contraseña")
+
+
 class UserInDB(UserBase):
     """User schema as stored in database"""
     model_config = ConfigDict(

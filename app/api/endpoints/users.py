@@ -7,7 +7,8 @@ from typing import List
 from fastapi import APIRouter, HTTPException, status
 
 from app.core.deps import ActiveUserDep, UserRepositoryDep
-from app.models.user import User, UserUpdate
+from app.models.user import User, UserUpdate, PasswordChange
+from app.core.security import verify_password, get_password_hash
 
 router = APIRouter()
 
@@ -47,6 +48,34 @@ async def update_current_user(
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=str(e)
+        )
+
+
+@router.put("/me/password", status_code=status.HTTP_204_NO_CONTENT)
+async def change_password(
+    password_change: PasswordChange,
+    current_user: ActiveUserDep,
+    user_repo: UserRepositoryDep
+) -> None:
+    """
+    Cambiar contraseña del usuario actual
+    """
+    # Verify current password
+    if not verify_password(password_change.current_password, current_user.hashed_password):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Contraseña actual incorrecta"
+        )
+    
+    # Hash new password
+    new_hashed_password = get_password_hash(password_change.new_password)
+    
+    # Update password in database
+    success = await user_repo.change_password(str(current_user.id), new_hashed_password)
+    if not success:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Error al cambiar la contraseña"
         )
 
 
